@@ -76,6 +76,13 @@ jobs:
       - run: flutter clean
       - run: flutter pub get
       - run: flutter build macos --release
+      - run: mkdir build/macos/Build/Products/Release/server_box
+      - run: mv build/macos/Build/Products/Release/server_box.app build/macos/Build/Products/Release/server_box
+      - name: Publish Mac Artefacts
+        uses: actions/upload-artifact@v1
+        with:
+           name: release-mac-app
+           path: build/macos/Build/Products/Release/server_box
 #       - run: ls -lah $MACOS_APP_RELEASE_PATH
 #       - name: Create folder to build dmg
 #         run: mkdir $MACOS_APP_RELEASE_PATH/$APP_NAME
