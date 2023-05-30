@@ -91,7 +91,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: macos
-          path: $APP_NAME_${{ github.event.inputs.version }}_macOS_Universal.dmg
+          path: server_box_${{ github.event.inputs.version }}_macOS_Universal.dmg
 #   build-linux:
 #     name: Build Linux .tar.gz and .deb
 #     runs-on: ubuntu-latest
