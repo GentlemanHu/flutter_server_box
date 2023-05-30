@@ -80,18 +80,18 @@ jobs:
       - name: Create folder to build dmg
         run: mkdir $MACOS_APP_RELEASE_PATH/$APP_NAME
       - name: Copy app into folder
-        run: cp -r $MACOS_APP_RELEASE_PATH/$APP_NAME.app $MACOS_APP_RELEASE_PATH/$APP_NAME/$APP_NAME.app
+        run: cp -r $MACOS_APP_RELEASE_PATH/$APP_NAME.app $MACOS_APP_RELEASE_PATH/$APP_NAME/${APP_NAME}.app
       - name: Generate symbolic link to Applications dir
         run: ln -s /Applications $MACOS_APP_RELEASE_PATH/$APP_NAME
       - name: Generate dmg
-        run: hdiutil create -srcfolder $MACOS_APP_RELEASE_PATH/$APP_NAME $MACOS_APP_RELEASE_PATH/$APP_NAME_${{ github.event.inputs.version }}_macOS_Universal.dmg
+        run: hdiutil create -srcfolder $MACOS_APP_RELEASE_PATH/${APP_NAME} $MACOS_APP_RELEASE_PATH/${APP_NAME}_${{ github.event.inputs.version }}_macOS_Universal.dmg
       - name: Copy dmg to project root
-        run: cp $MACOS_APP_RELEASE_PATH/$APP_NAME_${{ github.event.inputs.version }}_macOS_Universal.dmg $APP_NAME_${{ github.event.inputs.version }}_macOS_Universal.dmg
+        run: cp $MACOS_APP_RELEASE_PATH/${APP_NAME}_${{ github.event.inputs.version }}_macOS_Universal.dmg ./${APP_NAME}_${{ github.event.inputs.version }}_macOS_Universal.dmg
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: macos
-          path: server_box_${{ github.event.inputs.version }}_macOS_Universal.dmg
+          path: ${APP_NAME}_${{ github.event.inputs.version }}_macOS_Universal.dmg
 #   build-linux:
 #     name: Build Linux .tar.gz and .deb
 #     runs-on: ubuntu-latest
