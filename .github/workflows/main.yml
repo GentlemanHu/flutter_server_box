@@ -74,7 +74,7 @@ jobs:
           channel: "stable"
       - run: flutter clean
       - run: flutter pub get
-      - run: flutter build macos --release
+      - run: flutter build macos --release --build-name="Server Box"
       - name: Create folder to build dmg
         run: mkdir $MACOS_APP_RELEASE_PATH/Server\ Box
       - name: Copy app into folder
