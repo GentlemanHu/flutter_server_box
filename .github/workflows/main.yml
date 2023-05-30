@@ -63,6 +63,7 @@ jobs:
     runs-on: macos-latest
     env:
       MACOS_APP_RELEASE_PATH: build/macos/Build/Products/Release
+      APP_NAME: server_box
     steps:
       - uses: actions/checkout@v3
       - name: Decode .env
@@ -74,23 +75,23 @@ jobs:
           channel: "stable"
       - run: flutter clean
       - run: flutter pub get
-      - run: flutter build macos --release --build-name="Server Box"
+      - run: flutter build macos --release
       - run: ls -lah $MACOS_APP_RELEASE_PATH
       - name: Create folder to build dmg
-        run: mkdir $MACOS_APP_RELEASE_PATH/Server\ Box
+        run: mkdir $MACOS_APP_RELEASE_PATH/$APP_NAME
       - name: Copy app into folder
-        run: cp -r $MACOS_APP_RELEASE_PATH/Server\ Box.app $MACOS_APP_RELEASE_PATH/Server\ Box/Server\ Box.app
+        run: cp -r $MACOS_APP_RELEASE_PATH/$APP_NAME.app $MACOS_APP_RELEASE_PATH/$APP_NAME/$APP_NAME.app
       - name: Generate symbolic link to Applications dir
-        run: ln -s /Applications $MACOS_APP_RELEASE_PATH/Server\ Box
+        run: ln -s /Applications $MACOS_APP_RELEASE_PATH/$APP_NAME
       - name: Generate dmg
-        run: hdiutil create -srcfolder $MACOS_APP_RELEASE_PATH/Server\ Box $MACOS_APP_RELEASE_PATH/ServerBox_${{ github.event.inputs.version }}_macOS_Universal.dmg
+        run: hdiutil create -srcfolder $MACOS_APP_RELEASE_PATH/$APP_NAME $MACOS_APP_RELEASE_PATH/$APP_NAME_${{ github.event.inputs.version }}_macOS_Universal.dmg
       - name: Copy dmg to project root
-        run: cp $MACOS_APP_RELEASE_PATH/ServerBox_${{ github.event.inputs.version }}_macOS_Universal.dmg ServerBox_${{ github.event.inputs.version }}_macOS_Universal.dmg
+        run: cp $MACOS_APP_RELEASE_PATH/$APP_NAME_${{ github.event.inputs.version }}_macOS_Universal.dmg $APP_NAME_${{ github.event.inputs.version }}_macOS_Universal.dmg
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: macos
-          path: ServerBox_${{ github.event.inputs.version }}_macOS_Universal.dmg
+          path: $APP_NAME_${{ github.event.inputs.version }}_macOS_Universal.dmg
 #   build-linux:
 #     name: Build Linux .tar.gz and .deb
 #     runs-on: ubuntu-latest
