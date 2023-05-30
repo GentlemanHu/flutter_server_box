@@ -76,22 +76,22 @@ jobs:
       - run: flutter clean
       - run: flutter pub get
       - run: flutter build macos --release
-      - run: ls -lah $MACOS_APP_RELEASE_PATH
-      - name: Create folder to build dmg
-        run: mkdir $MACOS_APP_RELEASE_PATH/$APP_NAME
-      - name: Copy app into folder
-        run: cp -r $MACOS_APP_RELEASE_PATH/$APP_NAME.app $MACOS_APP_RELEASE_PATH/$APP_NAME/${APP_NAME}.app
-      - name: Generate symbolic link to Applications dir
-        run: ln -s /Applications $MACOS_APP_RELEASE_PATH/$APP_NAME
-      - name: Generate dmg
-        run: hdiutil create -srcfolder $MACOS_APP_RELEASE_PATH/${APP_NAME} $MACOS_APP_RELEASE_PATH/${APP_NAME}_${{ github.event.inputs.version }}_macOS_Universal.dmg
-      - name: Copy dmg to project root
-        run: cp $MACOS_APP_RELEASE_PATH/${APP_NAME}_${{ github.event.inputs.version }}_macOS_Universal.dmg ./${APP_NAME}_${{ github.event.inputs.version }}_macOS_Universal.dmg
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: macos
-          path: ${APP_NAME}_${{ github.event.inputs.version }}_macOS_Universal.dmg
+#       - run: ls -lah $MACOS_APP_RELEASE_PATH
+#       - name: Create folder to build dmg
+#         run: mkdir $MACOS_APP_RELEASE_PATH/$APP_NAME
+#       - name: Copy app into folder
+#         run: cp -r $MACOS_APP_RELEASE_PATH/$APP_NAME.app $MACOS_APP_RELEASE_PATH/$APP_NAME/${APP_NAME}.app
+#       - name: Generate symbolic link to Applications dir
+#         run: ln -s /Applications $MACOS_APP_RELEASE_PATH/$APP_NAME
+#       - name: Generate dmg
+#         run: hdiutil create -srcfolder $MACOS_APP_RELEASE_PATH/${APP_NAME} $MACOS_APP_RELEASE_PATH/${APP_NAME}_${{ github.event.inputs.version }}_macOS_Universal.dmg
+#       - name: Copy dmg to project root
+#         run: cp $MACOS_APP_RELEASE_PATH/${APP_NAME}_${{ github.event.inputs.version }}_macOS_Universal.dmg ./${APP_NAME}_${{ github.event.inputs.version }}_macOS_Universal.dmg
+#       - name: Upload artifact
+#         uses: actions/upload-artifact@v3
+#         with:
+#           name: macos
+#           path: ${APP_NAME}_${{ github.event.inputs.version }}_macOS_Universal.dmg
 #   build-linux:
 #     name: Build Linux .tar.gz and .deb
 #     runs-on: ubuntu-latest
@@ -166,42 +166,42 @@ jobs:
 #         with:
 #           name: windows
 #           path: AdGuardHomeManager_${{ github.event.inputs.version }}_Windows_x64.exe
-  release-builds-github:
-    name: Release builds to GitHub
-    runs-on: ubuntu-latest
-#     needs: [build-android, build-macos, build-linux, build-windows]
-    needs: [build-macos]
-    steps:
-      - uses: actions/checkout@v3
-      - name: Create builds directory
-        run: mkdir releases
-#       - name: Download Android artifacts
+#   release-builds-github:
+#     name: Release builds to GitHub
+#     runs-on: ubuntu-latest
+# #     needs: [build-android, build-macos, build-linux, build-windows]
+#     needs: [build-macos]
+#     steps:
+#       - uses: actions/checkout@v3
+#       - name: Create builds directory
+#         run: mkdir releases
+# #       - name: Download Android artifacts
+# #         uses: actions/download-artifact@v3
+# #         with:
+# #           name: android
+# #           path: releases/
+#       - name: Download macOS artifacts
 #         uses: actions/download-artifact@v3
 #         with:
-#           name: android
+#           name: macos
 #           path: releases/
-      - name: Download macOS artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: macos
-          path: releases/
-#       - name: Download Linux artifacts
-#         uses: actions/download-artifact@v3
+# #       - name: Download Linux artifacts
+# #         uses: actions/download-artifact@v3
+# #         with:
+# #           name: linux
+# #           path: releases/
+# #       - name: Download Windows artifacts
+# #         uses: actions/download-artifact@v3
+# #         with:
+# #           name: windows
+# #           path: releases/
+#       - name: Release to GitHub
+#         uses: ncipollo/release-action@v1
 #         with:
-#           name: linux
-#           path: releases/
-#       - name: Download Windows artifacts
-#         uses: actions/download-artifact@v3
-#         with:
-#           name: windows
-#           path: releases/
-      - name: Release to GitHub
-        uses: ncipollo/release-action@v1
-        with:
-          artifacts: "releases/*"
-          token: ${{ secrets.GH_TOKEN }}
-          tag: '${{ github.event.inputs.version }}_(${{ github.event.inputs.number }})'
-          name: v${{ github.event.inputs.version }}
-          draft: true
-          prerelease: false
-          commit: ${{ github.sha }}
+#           artifacts: "releases/*"
+#           token: ${{ secrets.GH_TOKEN }}
+#           tag: '${{ github.event.inputs.version }}_(${{ github.event.inputs.number }})'
+#           name: v${{ github.event.inputs.version }}
+#           draft: true
+#           prerelease: false
+#           commit: ${{ github.sha }}
