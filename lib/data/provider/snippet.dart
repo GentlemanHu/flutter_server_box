@@ -1,45 +1,78 @@
 import 'dart:convert';
 
-import 'package:toolbox/core/provider_base.dart';
-import 'package:toolbox/data/model/server/snippet.dart';
-import 'package:toolbox/data/store/snippet.dart';
-import 'package:toolbox/locator.dart';
+import 'package:fl_lib/fl_lib.dart';
+import 'package:flutter/material.dart';
+import 'package:server_box/data/model/server/snippet.dart';
+import 'package:server_box/data/res/store.dart';
 
-class SnippetProvider extends BusyProvider {
-  List<Snippet> get snippets => _snippets;
-  final _store = locator<SnippetStore>();
+class SnippetProvider extends ChangeNotifier {
   late List<Snippet> _snippets;
+  List<Snippet> get snippets => _snippets;
 
-  void loadData() {
-    _snippets = _store.fetch();
+  final _tags = ValueNotifier(<String>[]);
+  ValueNotifier<List<String>> get tags => _tags;
+
+  void load() {
+    _snippets = Stores.snippet.fetch();
+    final order = Stores.setting.snippetOrder.fetch();
+    if (order.isNotEmpty) {
+      final surplus = _snippets.reorder(
+        order: order,
+        finder: (n, name) => n.name == name,
+      );
+      order.removeWhere((e) => surplus.any((ele) => ele == e));
+      if (order != Stores.setting.snippetOrder.fetch()) {
+        Stores.setting.snippetOrder.put(order);
+      }
+    }
+    _updateTags();
+  }
+
+  void _updateTags() {
+    _tags.value.clear();
+    final tags = <String>{};
+    for (final s in _snippets) {
+      if (s.tags?.isEmpty ?? true) {
+        continue;
+      }
+      tags.addAll(s.tags!);
+    }
+    _tags.value.addAll(tags);
+    _tags.notifyListeners();
   }
 
   void add(Snippet snippet) {
-    if (have(snippet)) return;
     _snippets.add(snippet);
-    _store.put(snippet);
+    Stores.snippet.put(snippet);
+    _updateTags();
     notifyListeners();
   }
 
   void del(Snippet snippet) {
-    if (!have(snippet)) return;
-    _snippets.removeAt(index(snippet));
-    _store.delete(snippet);
+    _snippets.remove(snippet);
+    Stores.snippet.delete(snippet);
+    _updateTags();
     notifyListeners();
   }
 
-  int index(Snippet snippet) {
-    return _snippets.indexWhere((e) => e.name == snippet.name);
-  }
-
-  bool have(Snippet snippet) {
-    return index(snippet) != -1;
-  }
-
   void update(Snippet old, Snippet newOne) {
-    if (!have(old)) return;
-    _snippets[index(old)] = newOne;
-    _store.put(newOne);
+    Stores.snippet.delete(old);
+    Stores.snippet.put(newOne);
+    _snippets.remove(old);
+    _snippets.add(newOne);
+    _updateTags();
+    notifyListeners();
+  }
+
+  void renameTag(String old, String newOne) {
+    for (final s in _snippets) {
+      if (s.tags?.contains(old) ?? false) {
+        s.tags?.remove(old);
+        s.tags?.add(newOne);
+        Stores.snippet.put(s);
+      }
+    }
+    _updateTags();
     notifyListeners();
   }
 

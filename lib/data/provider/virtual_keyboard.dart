@@ -1,15 +1,27 @@
 import 'package:flutter/widgets.dart';
-import 'package:toolbox/data/store/setting.dart';
-import 'package:toolbox/locator.dart';
+import 'package:server_box/data/res/store.dart';
 import 'package:xterm/core.dart';
 
-class VirtualKeyboard extends TerminalInputHandler with ChangeNotifier {
-  VirtualKeyboard();
+class VirtKeyProvider extends TerminalInputHandler with ChangeNotifier {
+  VirtKeyProvider();
 
-  bool ctrl = false;
-  bool alt = false;
+  bool _ctrl = false;
+  bool get ctrl => _ctrl;
+  set ctrl(bool value) {
+    if (value != _ctrl) {
+      _ctrl = value;
+      notifyListeners();
+    }
+  }
 
-  final _setting = locator<SettingStore>();
+  bool _alt = false;
+  bool get alt => _alt;
+  set alt(bool value) {
+    if (value != _alt) {
+      _alt = value;
+      notifyListeners();
+    }
+  }
 
   void reset(TerminalKeyboardEvent e) {
     if (e.ctrl) {
@@ -27,7 +39,7 @@ class VirtualKeyboard extends TerminalInputHandler with ChangeNotifier {
       ctrl: event.ctrl || ctrl,
       alt: event.alt || alt,
     );
-    if (_setting.sshVirtualKeyAutoOff.fetch()!) {
+    if (Stores.setting.sshVirtualKeyAutoOff.fetch()) {
       reset(e);
     }
     return defaultInputHandler.call(e);

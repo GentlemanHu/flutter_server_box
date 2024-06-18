@@ -1,28 +1,24 @@
-import 'package:flutter/services.dart';
+import 'dart:convert';
 
-/// RegExp for number
-final numReg = RegExp(r'\s{1,}');
+abstract final class Miscs {
+  static final blankReg = RegExp(r'\s+');
+  static final multiBlankreg = RegExp(r'\s{2,}');
 
-/// Private Key max allowed size is 20kb
-const privateKeyMaxSize = 20 * 1024;
+  /// RegExp for password request
+  static final pwdRequestWithUserReg = RegExp(r'\[sudo\] password for (.+):');
 
-// Editor max allowed size is 1mb
-const editorMaxSize = 1024 * 1024;
+  /// Private Key max allowed size is 20kb
+  static const privateKeyMaxSize = 20 * 1024;
 
-/// Max debug log lines
-const maxDebugLogLines = 100;
+  /// Editor max allowed size is 1mb
+  static const editorMaxSize = 1024 * 1024;
 
-/// Method Channels
-const pkgName = 'tech.lolli.toolbox';
-const bgRunChannel = MethodChannel('$pkgName/app_retain');
+  /// Max debug log lines
+  static const maxDebugLogLines = 100;
 
-// default server details page cards order
-const defaultDetailCardOrder = [
-  'uptime',
-  'cpu',
-  'mem',
-  'swap',
-  'disk',
-  'net',
-  'temp'
-];
+  static const pkgName = 'tech.lolli.toolbox';
+
+  static const jsonEncoder = JsonEncoder.withIndent('  ');
+
+  static const bakFileName = 'srvbox_bak.json';
+}

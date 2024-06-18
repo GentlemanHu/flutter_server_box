@@ -1,9 +1,13 @@
-import 'package:toolbox/core/persistant_store.dart';
-import 'package:toolbox/data/model/server/private_key_info.dart';
+import 'package:fl_lib/fl_lib.dart';
+
+import '../model/server/private_key_info.dart';
 
 class PrivateKeyStore extends PersistentStore {
+  PrivateKeyStore() : super('key');
+
   void put(PrivateKeyInfo info) {
     box.put(info.id, info);
+    box.updateLastModified();
   }
 
   List<PrivateKeyInfo> fetch() {
@@ -11,18 +15,20 @@ class PrivateKeyStore extends PersistentStore {
     final ps = <PrivateKeyInfo>[];
     for (final key in keys) {
       final s = box.get(key);
-      if (s != null) {
+      if (s != null && s is PrivateKeyInfo) {
         ps.add(s);
       }
     }
     return ps;
   }
 
-  PrivateKeyInfo get(String id) {
+  PrivateKeyInfo? get(String? id) {
+    if (id == null) return null;
     return box.get(id);
   }
 
   void delete(PrivateKeyInfo s) {
     box.delete(s.id);
+    box.updateLastModified();
   }
 }

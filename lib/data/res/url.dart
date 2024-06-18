@@ -1,16 +1,9 @@
-const backendUrl = 'https://res.lolli.tech';
-const baseUrl = '$backendUrl/serverbox';
-const joinQQGroupUrl = 'https://jq.qq.com/?_wv=1027&k=G0hUmPAq';
-const myGithub = 'https://github.com/lollipopkit';
-const issueUrl = '$myGithub/flutter_server_box/issues';
-
-// Thanks
-const thanksMap = {
-  'its-tom': 'https://github.com/its-tom',
-  'RainSunMe': 'https://github.com/RainSunMe',
-  'fecture': 'https://github.com/fecture',
-  'Tao173': 'https://github.com/Tao173',
-  'QingAnLe': 'https://github.com/QingAnLe',
-  'wxdjs': 'https://github.com/wxdjs',
-  'Aeorq': 'https://github.com/Aeorq',
-};
+abstract final class Urls {
+  static const cdnBase = 'https://cdn.lolli.tech/serverbox';
+  static const updateCfg = '$cdnBase/update2.json';
+  static const myGithub = 'https://github.com/lollipopkit';
+  static const thisRepo = '$myGithub/flutter_server_box';
+  static const appHelp = '$thisRepo#-help';
+  static const appWiki = '$thisRepo/wiki';
+  static const analysis = 'https://countly.lolli.tech';
+}

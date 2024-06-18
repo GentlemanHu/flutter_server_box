@@ -1,20 +1,10 @@
 class Temperatures {
   final Map<String, double> _map = {};
 
-  Temperatures();
-
   void parse(String type, String value) {
-    const noMatch = "/sys/class/thermal/thermal_zone*/type";
-    // Not support to get CPU temperature
-    if (type.contains(noMatch) || value.isEmpty || type.isEmpty) {
-      return;
-    }
     final typeSplited = type.split('\n');
     final valueSplited = value.split('\n');
-    if (typeSplited.length != valueSplited.length) {
-      return;
-    }
-    for (var i = 0; i < typeSplited.length; i++) {
+    for (var i = 0; i < typeSplited.length && i < valueSplited.length; i++) {
       final t = typeSplited[i];
       final v = valueSplited[i];
       if (t.isEmpty || v.isEmpty) {
@@ -27,10 +17,6 @@ class Temperatures {
       }
       _map[name] = temp / 1000;
     }
-  }
-
-  void add(String name, double value) {
-    _map[name] = value;
   }
 
   double? get(String name) {
@@ -49,13 +35,15 @@ class Temperatures {
     if (_map.isEmpty) {
       return null;
     }
-    for (final key in _map.keys) {
-      if (cpuTempReg.hasMatch(key)) {
+    for (final key in _cpuTemp) {
+      if (_map.containsKey(key)) {
         return _map[key];
       }
     }
-    return _map.values.first;
+    return _map.values.firstOrNull;
   }
 }
 
-final cpuTempReg = RegExp(r'(x86_pkg_temp|cpu_thermal)');
+/// soc: mobile phone
+/// cpu_thermal / x86_pkg_temp / coretemp / zenpower: x86
+const _cpuTemp = ['x86_pkg_temp', 'coretemp', 'zenpower', 'cpu_thermal', 'soc'];

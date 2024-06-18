@@ -5,27 +5,36 @@ part 'private_key_info.g.dart';
 @HiveType(typeId: 1)
 class PrivateKeyInfo {
   @HiveField(0)
-  late String id;
+  final String id;
   @HiveField(1)
-  late String privateKey;
-  @HiveField(2)
-  late String password;
+  final String key;
 
-  PrivateKeyInfo(
-    this.id,
-    this.privateKey,
-    this.password,
-  );
-  PrivateKeyInfo.fromJson(Map<String, dynamic> json) {
-    id = json["id"].toString();
-    privateKey = json["private_key"].toString();
-    password = json["password"].toString();
+  const PrivateKeyInfo({
+    required this.id,
+    required this.key,
+  });
+
+  String? get type {
+    final lines = key.split('\n');
+    if (lines.length < 2) {
+      return null;
+    }
+    final firstLine = lines[0];
+    final splited = firstLine.split(RegExp(r'\s+'));
+    if (splited.length < 2) {
+      return null;
+    }
+    return splited[1];
   }
+
+  PrivateKeyInfo.fromJson(Map<String, dynamic> json)
+      : id = json["id"].toString(),
+        key = json["private_key"].toString();
+
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = <String, dynamic>{};
+    final data = <String, String>{};
     data["id"] = id;
-    data["private_key"] = privateKey;
-    data["password"] = password;
+    data["private_key"] = key;
     return data;
   }
 }

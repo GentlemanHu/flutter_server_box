@@ -1,36 +1,28 @@
 import 'dart:io';
 
-import 'package:after_layout/after_layout.dart';
-import 'package:flutter/foundation.dart';
+import 'package:computer/computer.dart';
+import 'package:fl_lib/fl_lib.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_gen/gen_l10n/l10n.dart';
-import 'package:toolbox/core/extension/navigator.dart';
-import 'package:toolbox/core/extension/numx.dart';
-import 'package:toolbox/core/utils/misc.dart';
-import 'package:toolbox/data/res/misc.dart';
-import 'package:toolbox/view/widget/input_field.dart';
+import 'package:server_box/core/extension/context/locale.dart';
+import 'package:server_box/data/res/misc.dart';
+import 'package:server_box/data/res/provider.dart';
 
 import '../../../core/utils/server.dart';
-import '../../../core/utils/ui.dart';
 import '../../../data/model/server/private_key_info.dart';
-import '../../../data/provider/private_key.dart';
-import '../../../data/res/ui.dart';
-import '../../../locator.dart';
 
 const _format = 'text/plain';
 
 class PrivateKeyEditPage extends StatefulWidget {
-  const PrivateKeyEditPage({Key? key, this.info}) : super(key: key);
+  const PrivateKeyEditPage({super.key, this.pki});
 
-  final PrivateKeyInfo? info;
+  final PrivateKeyInfo? pki;
 
   @override
-  _PrivateKeyEditPageState createState() => _PrivateKeyEditPageState();
+  State<PrivateKeyEditPage> createState() => _PrivateKeyEditPageState();
 }
 
-class _PrivateKeyEditPageState extends State<PrivateKeyEditPage>
-    with AfterLayoutMixin {
+class _PrivateKeyEditPageState extends State<PrivateKeyEditPage> {
   final _nameController = TextEditingController();
   final _keyController = TextEditingController();
   final _pwdController = TextEditingController();
@@ -39,22 +31,40 @@ class _PrivateKeyEditPageState extends State<PrivateKeyEditPage>
   final _pwdNode = FocusNode();
 
   late FocusScopeNode _focusScope;
-  late PrivateKeyProvider _provider;
-  late S _s;
 
-  Widget _loading = placeholder;
+  final _loading = ValueNotifier<Widget?>(null);
 
   @override
   void initState() {
     super.initState();
-    _provider = locator<PrivateKeyProvider>();
-    _loading = placeholder;
+    if (widget.pki != null) {
+      _nameController.text = widget.pki!.id;
+      _keyController.text = widget.pki!.key;
+    } else {
+      Clipboard.getData(_format).then((value) {
+        if (value == null) return;
+        final clipdata = value.text?.trim() ?? '';
+        if (clipdata.startsWith('-----BEGIN') && clipdata.endsWith('-----')) {
+          _keyController.text = clipdata;
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _nameController.dispose();
+    _keyController.dispose();
+    _pwdController.dispose();
+    _nameNode.dispose();
+    _keyNode.dispose();
+    _pwdNode.dispose();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _s = S.of(context)!;
     _focusScope = FocusScope.of(context);
   }
 
@@ -67,58 +77,70 @@ class _PrivateKeyEditPageState extends State<PrivateKeyEditPage>
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      title: Text(_s.edit, style: textSize18),
-      actions: [
-        widget.info != null
-            ? IconButton(
-                tooltip: _s.delete,
+  CustomAppBar _buildAppBar() {
+    final actions = [
+      IconButton(
+        tooltip: l10n.delete,
+        onPressed: () {
+          context.showRoundDialog(
+            title: l10n.attention,
+            child: Text(l10n.askContinue(
+              '${l10n.delete} ${l10n.privateKey}(${widget.pki!.id})',
+            )),
+            actions: [
+              TextButton(
                 onPressed: () {
-                  _provider.delInfo(widget.info!);
+                  Pros.key.delete(widget.pki!);
+                  context.pop();
                   context.pop();
                 },
-                icon: const Icon(Icons.delete))
-            : placeholder
-      ],
+                child: Text(
+                  l10n.ok,
+                  style: UIs.textRed,
+                ),
+              ),
+            ],
+          );
+        },
+        icon: const Icon(Icons.delete),
+      )
+    ];
+    return CustomAppBar(
+      title: Text(l10n.edit, style: UIs.text18),
+      actions: widget.pki == null ? null : actions,
     );
+  }
+
+  String _standardizeLineSeparators(String value) {
+    return value.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
   }
 
   Widget _buildFAB() {
     return FloatingActionButton(
-      tooltip: _s.save,
+      tooltip: l10n.save,
       onPressed: () async {
         final name = _nameController.text;
-        final key = _keyController.text.trim();
+        final key = _standardizeLineSeparators(_keyController.text.trim());
         final pwd = _pwdController.text;
         if (name.isEmpty || key.isEmpty) {
-          showSnackBar(context, Text(_s.fieldMustNotEmpty));
+          context.showSnackBar(l10n.fieldMustNotEmpty);
           return;
         }
         FocusScope.of(context).unfocus();
-        setState(() {
-          _loading = const SizedBox(
-            height: 50,
-            child: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
-        });
-        final info = PrivateKeyInfo(name, key, '');
+        _loading.value = UIs.centerSizedLoading;
         try {
-          info.privateKey = await compute(decyptPem, [key, pwd]);
+          final decrypted = await Computer.shared.start(decyptPem, [key, pwd]);
+          final pki = PrivateKeyInfo(id: name, key: decrypted);
+          if (widget.pki != null) {
+            Pros.key.update(widget.pki!, pki);
+          } else {
+            Pros.key.add(pki);
+          }
         } catch (e) {
-          showSnackBar(context, Text(e.toString()));
+          context.showSnackBar(e.toString());
           rethrow;
         } finally {
-          setState(() {
-            _loading = placeholder;
-          });
-        }
-        if (widget.info != null) {
-          _provider.updateInfo(widget.info!, info);
-        } else {
-          _provider.addInfo(info);
+          _loading.value = null;
         }
         context.pop();
       },
@@ -131,11 +153,12 @@ class _PrivateKeyEditPageState extends State<PrivateKeyEditPage>
       padding: const EdgeInsets.all(13),
       children: [
         Input(
+          autoFocus: true,
           controller: _nameController,
           type: TextInputType.text,
           node: _nameNode,
           onSubmitted: (_) => _focusScope.requestFocus(_keyNode),
-          label: _s.name,
+          label: l10n.name,
           icon: Icons.info,
         ),
         Input(
@@ -145,66 +168,51 @@ class _PrivateKeyEditPageState extends State<PrivateKeyEditPage>
           type: TextInputType.text,
           node: _keyNode,
           onSubmitted: (_) => _focusScope.requestFocus(_pwdNode),
-          label: _s.privateKey,
+          label: l10n.privateKey,
           icon: Icons.vpn_key,
         ),
         TextButton(
           onPressed: () async {
-            final path = await pickOneFile();
-            if (path == null) {
-              showSnackBar(context, Text(_s.fieldMustNotEmpty));
-              return;
-            }
+            final path = await Pfs.pickFilePath();
+            if (path == null) return;
 
             final file = File(path);
             if (!file.existsSync()) {
-              showSnackBar(context, Text(_s.fileNotExist(path)));
+              context.showSnackBar(l10n.fileNotExist(path));
               return;
             }
             final size = (await file.stat()).size;
-            if (size > privateKeyMaxSize) {
-              showSnackBar(
-                context,
-                Text(
-                  _s.fileTooLarge(
-                    path,
-                    size.convertBytes,
-                    privateKeyMaxSize.convertBytes,
-                  ),
+            if (size > Miscs.privateKeyMaxSize) {
+              context.showSnackBar(
+                l10n.fileTooLarge(
+                  path,
+                  size.bytes2Str,
+                  Miscs.privateKeyMaxSize.bytes2Str,
                 ),
               );
               return;
             }
 
-            _keyController.text = await file.readAsString();
+            final content = await file.readAsString();
+            // dartssh2 accepts only LF (but not CRLF or CR)
+            _keyController.text = _standardizeLineSeparators(content.trim());
           },
-          child: Text(_s.pickFile),
+          child: Text(l10n.pickFile),
         ),
         Input(
           controller: _pwdController,
           type: TextInputType.text,
           node: _pwdNode,
           obscureText: true,
-          label: _s.pwd,
+          label: l10n.pwd,
           icon: Icons.password,
         ),
         SizedBox(height: MediaQuery.of(context).size.height * 0.1),
-        _loading
+        ValBuilder(
+          listenable: _loading,
+          builder: (val) => val ?? UIs.placeholder,
+        ),
       ],
     );
-  }
-
-  @override
-  Future<void> afterFirstLayout(BuildContext context) async {
-    if (widget.info != null) {
-      _nameController.text = widget.info!.id;
-      _keyController.text = widget.info!.privateKey;
-      _pwdController.text = widget.info!.password;
-    } else {
-      final clipdata = ((await Clipboard.getData(_format))?.text ?? '').trim();
-      if (clipdata.startsWith('-----BEGIN') && clipdata.endsWith('-----')) {
-        _keyController.text = clipdata;
-      }
-    }
   }
 }

@@ -48,8 +48,19 @@ app.*.map.json
 /android/app/fjy.androidstudio.key
 /release
 test.dart
-.fvm
 
 # Keep generated l10n files
-/.dart_tool/*
-!/.dart_tool/flutter_gen
+# /.dart_tool/*
+# !/.dart_tool/flutter_gen
+
+.dart_tool
+
+# Linux release
+linux.AppDir
+**/*.AppImage
+
+untranlated.json
+
+.vscode/settings.json
+more_build_data.json
+trans.txt

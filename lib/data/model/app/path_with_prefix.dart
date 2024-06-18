@@ -1,10 +1,14 @@
-class PathWithPrefix {
+import 'package:fl_lib/fl_lib.dart';
+
+/// It's used on platform's file system.
+/// So use [Platform.pathSeparator] to join path.
+class LocalPath {
   final String _prefixPath;
   String _path = '/';
   String? _prePath;
   String get path => _prefixPath + _path;
 
-  PathWithPrefix(String prefixPath) : _prefixPath = _trimSuffix(prefixPath);
+  LocalPath(String prefixPath) : _prefixPath = _trimSuffix(prefixPath);
 
   void update(String newPath) {
     _prePath = _path;
@@ -19,8 +23,10 @@ class PathWithPrefix {
       _path = '/';
       return;
     }
-    _path = _path + (_path.endsWith('/') ? '' : '/') + newPath;
+    _path = _path.joinPath(newPath);
   }
+
+  bool get canBack => path != '$_prefixPath/';
 
   bool undo() {
     if (_prePath == null || _path == _prePath) {

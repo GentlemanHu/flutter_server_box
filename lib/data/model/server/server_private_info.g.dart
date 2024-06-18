@@ -21,15 +21,21 @@ class ServerPrivateInfoAdapter extends TypeAdapter<ServerPrivateInfo> {
       ip: fields[1] as String,
       port: fields[2] as int,
       user: fields[3] as String,
-      pwd: fields[4] as String,
-      pubKeyId: fields[5] as String?,
+      pwd: fields[4] as String?,
+      keyId: fields[5] as String?,
+      tags: (fields[6] as List?)?.cast<String>(),
+      alterUrl: fields[7] as String?,
+      autoConnect: fields[8] as bool?,
+      jumpId: fields[9] as String?,
+      custom: fields[10] as ServerCustom?,
+      wolCfg: fields[11] as WakeOnLanCfg?,
     );
   }
 
   @override
   void write(BinaryWriter writer, ServerPrivateInfo obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -41,7 +47,19 @@ class ServerPrivateInfoAdapter extends TypeAdapter<ServerPrivateInfo> {
       ..writeByte(4)
       ..write(obj.pwd)
       ..writeByte(5)
-      ..write(obj.pubKeyId);
+      ..write(obj.keyId)
+      ..writeByte(6)
+      ..write(obj.tags)
+      ..writeByte(7)
+      ..write(obj.alterUrl)
+      ..writeByte(8)
+      ..write(obj.autoConnect)
+      ..writeByte(9)
+      ..write(obj.jumpId)
+      ..writeByte(10)
+      ..write(obj.custom)
+      ..writeByte(11)
+      ..write(obj.wolCfg);
   }
 
   @override

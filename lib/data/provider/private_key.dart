@@ -1,33 +1,35 @@
-import 'package:toolbox/core/provider_base.dart';
-import 'package:toolbox/data/model/server/private_key_info.dart';
-import 'package:toolbox/data/store/private_key.dart';
-import 'package:toolbox/locator.dart';
+import 'package:flutter/material.dart';
+import 'package:server_box/data/model/server/private_key_info.dart';
+import 'package:server_box/data/res/store.dart';
 
-class PrivateKeyProvider extends BusyProvider {
-  List<PrivateKeyInfo> get infos => _infos;
-  final _store = locator<PrivateKeyStore>();
-  late List<PrivateKeyInfo> _infos;
+class PrivateKeyProvider extends ChangeNotifier {
+  List<PrivateKeyInfo> get pkis => _pkis;
+  late List<PrivateKeyInfo> _pkis;
 
-  void loadData() {
-    _infos = _store.fetch();
+  void load() {
+    _pkis = Stores.key.fetch();
   }
 
-  void addInfo(PrivateKeyInfo info) {
-    _infos.add(info);
-    _store.put(info);
+  void add(PrivateKeyInfo info) {
+    _pkis.add(info);
+    Stores.key.put(info);
     notifyListeners();
   }
 
-  void delInfo(PrivateKeyInfo info) {
-    _infos.removeWhere((e) => e.id == info.id);
-    _store.delete(info);
+  void delete(PrivateKeyInfo info) {
+    _pkis.removeWhere((e) => e.id == info.id);
+    Stores.key.delete(info);
     notifyListeners();
   }
 
-  void updateInfo(PrivateKeyInfo old, PrivateKeyInfo newInfo) {
-    final idx = _infos.indexWhere((e) => e.id == old.id);
-    _infos[idx] = newInfo;
-    _store.put(newInfo);
+  void update(PrivateKeyInfo old, PrivateKeyInfo newInfo) {
+    final idx = _pkis.indexWhere((e) => e.id == old.id);
+    if (idx == -1) {
+      _pkis.add(newInfo);
+    } else {
+      _pkis[idx] = newInfo;
+    }
+    Stores.key.put(newInfo);
     notifyListeners();
   }
 }

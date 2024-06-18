@@ -17,22 +17,19 @@ class PrivateKeyInfoAdapter extends TypeAdapter<PrivateKeyInfo> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return PrivateKeyInfo(
-      fields[0] as String,
-      fields[1] as String,
-      fields[2] as String,
+      id: fields[0] as String,
+      key: fields[1] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, PrivateKeyInfo obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(2)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.privateKey)
-      ..writeByte(2)
-      ..write(obj.password);
+      ..write(obj.key);
   }
 
   @override

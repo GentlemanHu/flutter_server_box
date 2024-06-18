@@ -17,19 +17,28 @@ class SnippetAdapter extends TypeAdapter<Snippet> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Snippet(
-      fields[0] as String,
-      fields[1] as String,
+      name: fields[0] as String,
+      script: fields[1] as String,
+      tags: (fields[2] as List?)?.cast<String>(),
+      note: fields[3] as String?,
+      autoRunOn: (fields[4] as List?)?.cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Snippet obj) {
     writer
-      ..writeByte(2)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
-      ..write(obj.script);
+      ..write(obj.script)
+      ..writeByte(2)
+      ..write(obj.tags)
+      ..writeByte(3)
+      ..write(obj.note)
+      ..writeByte(4)
+      ..write(obj.autoRunOn);
   }
 
   @override

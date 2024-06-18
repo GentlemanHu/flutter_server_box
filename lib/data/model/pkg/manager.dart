@@ -1,4 +1,4 @@
-import 'package:toolbox/data/model/server/dist.dart';
+import 'package:server_box/data/model/server/dist.dart';
 
 enum PkgManager {
   apt,
@@ -68,7 +68,9 @@ enum PkgManager {
         list.removeWhere((element) => element.isEmpty);
         final endLine = list.lastIndexWhere(
             (element) => element.contains('Obsoleting Packages'));
-        list = list.sublist(0, endLine);
+        if (endLine != -1 && list.isNotEmpty) {
+          list = list.sublist(0, endLine);
+        }
         break;
       case PkgManager.apt:
         // avoid other outputs
@@ -92,28 +94,29 @@ enum PkgManager {
     list.removeWhere((element) => element.isEmpty);
     return list;
   }
-}
 
-PkgManager? fromDist(Dist? dist) {
-  switch (dist) {
-    case Dist.centos:
-    case Dist.rocky:
-    case Dist.fedora:
-      return PkgManager.yum;
-    case Dist.debian:
-    case Dist.ubuntu:
-    case Dist.kali:
-    case Dist.armbian:
-      return PkgManager.apt;
-    case Dist.opensuse:
-      return PkgManager.zypper;
-    case Dist.wrt:
-      return PkgManager.opkg;
-    case Dist.arch:
-      return PkgManager.pacman;
-    case Dist.alpine:
-      return PkgManager.apk;
-    default:
-      return null;
+  static PkgManager? fromDist(Dist? dist) {
+    switch (dist) {
+      case Dist.centos:
+      case Dist.rocky:
+      case Dist.fedora:
+        return PkgManager.yum;
+      case Dist.debian:
+      case Dist.ubuntu:
+      case Dist.kali:
+      case Dist.armbian:
+      case Dist.deepin:
+        return PkgManager.apt;
+      case Dist.opensuse:
+        return PkgManager.zypper;
+      case Dist.wrt:
+        return PkgManager.opkg;
+      case Dist.arch:
+        return PkgManager.pacman;
+      case Dist.alpine:
+        return PkgManager.apk;
+      case null:
+        return null;
+    }
   }
 }

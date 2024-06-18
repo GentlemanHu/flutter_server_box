@@ -1,36 +1,27 @@
 import 'dart:async';
 
-import 'package:after_layout/after_layout.dart';
+import 'package:fl_lib/fl_lib.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/l10n.dart';
+import 'package:server_box/core/extension/context/locale.dart';
+import 'package:server_box/data/res/provider.dart';
 
-import '../../core/extension/uint8list.dart';
-import '../../core/utils/ui.dart';
 import '../../data/model/server/ping_result.dart';
-import '../../data/provider/server.dart';
-import '../../data/res/color.dart';
-import '../../data/res/ui.dart';
-import '../../locator.dart';
-import '../widget/input_field.dart';
-import '../widget/round_rect_card.dart';
 
 /// Only permit ipv4 / ipv6 / domain chars
 final targetReg = RegExp(r'[a-zA-Z0-9\.-_:]+');
 
 class PingPage extends StatefulWidget {
-  const PingPage({Key? key}) : super(key: key);
+  const PingPage({super.key});
 
   @override
-  _PingPageState createState() => _PingPageState();
+  State<PingPage> createState() => _PingPageState();
 }
 
 class _PingPageState extends State<PingPage>
-    with AutomaticKeepAliveClientMixin, AfterLayoutMixin {
+    with AutomaticKeepAliveClientMixin {
   late TextEditingController _textEditingController;
-  late MediaQueryData _media;
-  final List<PingResult> _results = [];
-  final _serverProvider = locator<ServerProvider>();
-  late S s;
+  final _results = ValueNotifier(<PingResult>[]);
+  bool get isInit => _results.value.isEmpty;
 
   @override
   void initState() {
@@ -39,80 +30,105 @@ class _PingPageState extends State<PingPage>
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _media = MediaQuery.of(context);
-    s = S.of(context)!;
+  void dispose() {
+    super.dispose();
+    _textEditingController.dispose();
+    _results.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
     return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 7),
-        child: Column(
-          children: [
-            height13,
-            Input(
-              controller: _textEditingController,
-              hint: s.inputDomainHere,
-              maxLines: 1,
-              onSubmitted: (_) => doPing(),
-            ),
-            SizedBox(
-              width: double.infinity,
-              height: _media.size.height * 0.6,
-              child: ListView.builder(
-                controller: ScrollController(),
-                itemCount: _results.length,
-                itemBuilder: (context, index) {
-                  final result = _results[index];
-                  return _buildResultItem(result);
-                },
-              ),
-            ),
+      body: ListenableBuilder(
+        listenable: _results,
+        builder: (_, __) => _buildBody(),
+      ),
+      floatingActionButton: _buildFAB(),
+    );
+  }
+
+  Widget _buildFAB() {
+    return FloatingActionButton(
+      heroTag: 'ping',
+      onPressed: () {
+        context.showRoundDialog(
+          title: l10n.choose,
+          child: Input(
+            autoFocus: true,
+            controller: _textEditingController,
+            hint: l10n.inputDomainHere,
+            maxLines: 1,
+            onSubmitted: (_) => _doPing(),
+          ),
+          actions: [
+            TextButton(onPressed: _doPing, child: Text(l10n.ok)),
           ],
+        );
+      },
+      child: const Icon(Icons.search),
+    );
+  }
+
+  Future<void> _doPing() async {
+    context.pop();
+    try {
+      await doPing();
+    } catch (e) {
+      context.showRoundDialog(
+        title: l10n.error,
+        child: Text(e.toString()),
+        actions: [
+          TextButton(
+            onPressed: () => Pfs.copy(e.toString()),
+            child: Text(l10n.copy),
+          ),
+        ],
+      );
+      rethrow;
+    }
+  }
+
+  Widget _buildBody() {
+    if (isInit) {
+      return Center(
+        child: Text(
+          l10n.noResult,
+          style: const TextStyle(fontSize: 15),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'ping fab',
-        onPressed: () {
-          try {
-            doPing();
-          } catch (e) {
-            showSnackBar(context, Text('Error: \n$e'));
-            rethrow;
-          }
-        },
-        child: const Icon(Icons.play_arrow),
-      ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(11),
+      controller: ScrollController(),
+      itemCount: _results.value.length,
+      itemBuilder: (_, index) => _buildResultItem(_results.value[index]),
     );
   }
 
   Widget _buildResultItem(PingResult result) {
-    final unknown = s.unknown;
-    final ms = s.ms;
-    return RoundRectCard(
-      ListTile(
+    final unknown = l10n.unknown;
+    final ms = l10n.ms;
+    return CardX(
+      child: ListTile(
         contentPadding: const EdgeInsets.symmetric(vertical: 7, horizontal: 17),
         title: Text(
           result.serverName,
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: primaryColor,
+            color: UIs.primaryColor,
           ),
         ),
         subtitle: Text(
           _buildPingSummary(result, unknown, ms),
-          style: textSize11,
+          style: UIs.text11,
         ),
         trailing: Text(
-          '${s.pingAvg}${result.statistic?.avg?.toStringAsFixed(2) ?? s.unknown} $ms',
+          '${l10n.pingAvg}${result.statistic?.avg?.toStringAsFixed(2) ?? l10n.unknown} $ms',
           style: TextStyle(
             fontSize: 14,
-            color: primaryColor,
+            color: UIs.primaryColor,
           ),
         ),
       ),
@@ -122,53 +138,50 @@ class _PingPageState extends State<PingPage>
   String _buildPingSummary(PingResult result, String unknown, String ms) {
     final ip = result.ip ?? unknown;
     if (result.results == null || result.results!.isEmpty) {
-      return '$ip - ${s.noResult}';
+      return '$ip - ${l10n.noResult}';
     }
-    final ttl = result.results?.first.ttl ?? unknown;
+    final ttl = result.results?.firstOrNull?.ttl ?? unknown;
     final loss = result.statistic?.loss ?? unknown;
     final min = result.statistic?.min ?? unknown;
     final max = result.statistic?.max ?? unknown;
-    return '$ip\n${s.ttl}: $ttl, ${s.loss}: $loss%\n${s.min}: $min $ms, ${s.max}: $max $ms';
+    return '$ip\n${l10n.ttl}: $ttl, ${l10n.loss}: $loss%\n${l10n.min}: $min $ms, ${l10n.max}: $max $ms';
   }
 
   Future<void> doPing() async {
     FocusScope.of(context).requestFocus(FocusNode());
-    _results.clear();
+    _results.value.clear();
     final target = _textEditingController.text.trim();
     if (target.isEmpty) {
-      showSnackBar(context, Text(s.pingInputIP));
+      context.showSnackBar(l10n.pingInputIP);
       return;
     }
 
-    if (_serverProvider.servers.isEmpty) {
-      showSnackBar(context, Text(s.pingNoServer));
+    if (Pros.server.serverOrder.isEmpty) {
+      context.showSnackBar(l10n.pingNoServer);
       return;
     }
 
     /// avoid ping command injection
     if (!targetReg.hasMatch(target)) {
-      showSnackBar(context, Text(s.pingInputIP));
+      context.showSnackBar(l10n.pingInputIP);
       return;
     }
 
-    await Future.wait(_serverProvider.servers.values.map((e) async {
+    await Future.wait(Pros.server.servers.map((e) async {
       if (e.client == null) {
         return;
       }
       final result = await e.client!.run('ping -c 3 $target').string;
-      _results.add(PingResult.parse(e.spi.name, result));
-      setState(() {});
+      _results.value.add(PingResult.parse(e.spi.name, result));
+      // [ValueNotifier] only notify when value is changed
+      // But we just add a element to list without changing the list itself
+      // So we need to notify manually
+      //
+      // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+      _results.notifyListeners();
     }));
   }
 
   @override
   bool get wantKeepAlive => true;
-
-  @override
-  Future<FutureOr<void>> afterFirstLayout(BuildContext context) async {
-    if (_serverProvider.servers.isEmpty) {
-      await _serverProvider.loadLocalData();
-      await _serverProvider.refreshData();
-    }
-  }
 }

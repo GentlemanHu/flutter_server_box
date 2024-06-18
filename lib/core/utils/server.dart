@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter/foundation.dart';
+import 'package:server_box/data/model/app/error.dart';
+import 'package:server_box/data/res/store.dart';
 
 import '../../data/model/server/server_private_info.dart';
-import '../../data/store/private_key.dart';
-import '../../locator.dart';
 
 /// Must put this func out of any Class.
 ///
@@ -30,30 +30,103 @@ enum GenSSHClientStatus {
   pwd,
 }
 
+String getPrivateKey(String id) {
+  final pki = Stores.key.get(id);
+  if (pki == null) {
+    throw SSHErr(
+      type: SSHErrType.noPrivateKey,
+      message: 'key [$id] not found',
+    );
+  }
+  return pki.key;
+}
+
 Future<SSHClient> genClient(
   ServerPrivateInfo spi, {
   void Function(GenSSHClientStatus)? onStatus,
+
+  /// Only pass this param if using multi-threading and key login
+  String? privateKey,
+
+  /// Only pass this param if using multi-threading and key login
+  String? jumpPrivateKey,
+  Duration timeout = const Duration(seconds: 5),
+
+  /// [ServerPrivateInfo] of the jump server
+  ///
+  /// Must pass this param if using multi-threading and key login
+  ServerPrivateInfo? jumpSpi,
+
+  /// Handle keyboard-interactive authentication
+  FutureOr<List<String>?> Function(SSHUserInfoRequest)? onKeyboardInteractive,
 }) async {
-  final onStatus_ = onStatus ?? (_) {};
-  onStatus_(GenSSHClientStatus.socket);
-  final socket = await SSHSocket.connect(
-    spi.ip,
-    spi.port,
-    timeout: const Duration(seconds: 5),
-  );
-  if (spi.pubKeyId == null) {
-    onStatus_(GenSSHClientStatus.pwd);
+  onStatus?.call(GenSSHClientStatus.socket);
+
+  final socket = await () async {
+    // Proxy
+    final jumpSpi_ = () {
+      // Multi-thread or key login
+      if (jumpSpi != null) return jumpSpi;
+      // Main thread
+      if (spi.jumpId != null) return Stores.server.box.get(spi.jumpId);
+    }();
+    if (jumpSpi_ != null) {
+      final jumpClient = await genClient(
+        jumpSpi_,
+        privateKey: jumpPrivateKey,
+        timeout: timeout,
+      );
+
+      return await jumpClient.forwardLocal(
+        spi.ip,
+        spi.port,
+      );
+    }
+
+    // Direct
+    try {
+      return await SSHSocket.connect(
+        spi.ip,
+        spi.port,
+        timeout: timeout,
+      );
+    } catch (e) {
+      if (spi.alterUrl == null) rethrow;
+      try {
+        final ipPort = spi.fromStringUrl();
+        return await SSHSocket.connect(
+          ipPort.ip,
+          ipPort.port,
+          timeout: timeout,
+        );
+      } catch (e) {
+        rethrow;
+      }
+    }
+  }();
+
+  final keyId = spi.keyId;
+  if (keyId == null) {
+    onStatus?.call(GenSSHClientStatus.pwd);
     return SSHClient(
       socket,
       username: spi.user,
       onPasswordRequest: () => spi.pwd,
+      onUserInfoRequest: onKeyboardInteractive,
+      // printDebug: debugPrint,
+      // printTrace: debugPrint,
     );
   }
-  final key = locator<PrivateKeyStore>().get(spi.pubKeyId!);
-  onStatus_(GenSSHClientStatus.key);
+  privateKey ??= getPrivateKey(keyId);
+
+  onStatus?.call(GenSSHClientStatus.key);
   return SSHClient(
     socket,
     username: spi.user,
-    identities: await compute(loadIndentity, key.privateKey),
+    // Must use [compute] here, instead of [Computer.shared.start]
+    identities: await compute(loadIndentity, privateKey),
+    onUserInfoRequest: onKeyboardInteractive,
+    // printDebug: debugPrint,
+    // printTrace: debugPrint,
   );
 }

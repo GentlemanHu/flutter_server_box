@@ -5,12 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "toolbox",
+            "name": "debug",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            // "args": [
+            //     "-v"
+            // ]
         },
         {
-            "name": "toolbox (profile mode)",
+            "name": "profile",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile",

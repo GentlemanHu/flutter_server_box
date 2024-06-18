@@ -1,82 +1,102 @@
-import 'package:after_layout/after_layout.dart';
+import 'package:fl_lib/fl_lib.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/l10n.dart';
-import 'package:toolbox/core/extension/navigator.dart';
-import 'package:toolbox/view/widget/input_field.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:server_box/core/extension/context/locale.dart';
+import 'package:server_box/data/res/provider.dart';
 
-import '../../../core/utils/ui.dart';
 import '../../../data/model/server/snippet.dart';
-import '../../../data/provider/snippet.dart';
-import '../../../data/res/ui.dart';
-import '../../../locator.dart';
 
 class SnippetEditPage extends StatefulWidget {
-  const SnippetEditPage({Key? key, this.snippet}) : super(key: key);
+  const SnippetEditPage({super.key, this.snippet});
 
   final Snippet? snippet;
 
   @override
-  _SnippetEditPageState createState() => _SnippetEditPageState();
+  State<SnippetEditPage> createState() => _SnippetEditPageState();
 }
 
 class _SnippetEditPageState extends State<SnippetEditPage>
     with AfterLayoutMixin {
   final _nameController = TextEditingController();
   final _scriptController = TextEditingController();
+  final _noteController = TextEditingController();
   final _scriptNode = FocusNode();
-
-  late SnippetProvider _provider;
-  late S _s;
-
-  @override
-  void initState() {
-    super.initState();
-    _provider = locator<SnippetProvider>();
-  }
+  final _autoRunOn = ValueNotifier(<String>[]);
+  final _tags = ValueNotifier(<String>[]);
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _s = S.of(context)!;
+  void dispose() {
+    super.dispose();
+    _nameController.dispose();
+    _scriptController.dispose();
+    _scriptNode.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_s.edit, style: textSize18),
-        actions: [
-          widget.snippet != null
-              ? IconButton(
-                  onPressed: () {
-                    _provider.del(widget.snippet!);
-                    context.pop();
-                  },
-                  tooltip: _s.delete,
-                  icon: const Icon(Icons.delete))
-              : placeholder
-        ],
+      appBar: CustomAppBar(
+        title: Text(l10n.edit, style: UIs.text18),
+        actions: _buildAppBarActions(),
       ),
       body: _buildBody(),
       floatingActionButton: _buildFAB(),
     );
   }
 
+  List<Widget>? _buildAppBarActions() {
+    if (widget.snippet == null) {
+      return null;
+    }
+    return [
+      IconButton(
+        onPressed: () {
+          context.showRoundDialog(
+            title: l10n.attention,
+            child: Text(l10n.askContinue(
+              '${l10n.delete} ${l10n.snippet}(${widget.snippet!.name})',
+            )),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Pros.snippet.del(widget.snippet!);
+                  context.pop();
+                  context.pop();
+                },
+                child: Text(l10n.ok, style: UIs.textRed),
+              ),
+            ],
+          );
+        },
+        tooltip: l10n.delete,
+        icon: const Icon(Icons.delete),
+      )
+    ];
+  }
+
   Widget _buildFAB() {
     return FloatingActionButton(
-      child: const Icon(Icons.send),
+      heroTag: 'snippet',
+      child: const Icon(Icons.save),
       onPressed: () {
         final name = _nameController.text;
         final script = _scriptController.text;
         if (name.isEmpty || script.isEmpty) {
-          showSnackBar(context, Text(_s.fieldMustNotEmpty));
+          context.showSnackBar(l10n.fieldMustNotEmpty);
           return;
         }
-        final snippet = Snippet(name, script);
+        final note = _noteController.text;
+        final snippet = Snippet(
+          name: name,
+          script: script,
+          tags: _tags.value.isEmpty ? null : _tags.value,
+          note: note.isEmpty ? null : note,
+          autoRunOn: _autoRunOn.value.isEmpty ? null : _autoRunOn.value,
+        );
         if (widget.snippet != null) {
-          _provider.update(widget.snippet!, snippet);
+          Pros.snippet.update(widget.snippet!, snippet);
         } else {
-          _provider.add(snippet);
+          Pros.snippet.add(snippet);
         }
         context.pop();
       },
@@ -88,11 +108,35 @@ class _SnippetEditPageState extends State<SnippetEditPage>
       padding: const EdgeInsets.all(13),
       children: [
         Input(
+          autoFocus: true,
           controller: _nameController,
           type: TextInputType.text,
           onSubmitted: (_) => FocusScope.of(context).requestFocus(_scriptNode),
-          label: _s.name,
+          label: l10n.name,
           icon: Icons.info,
+        ),
+        Input(
+          controller: _noteController,
+          minLines: 3,
+          maxLines: 3,
+          type: TextInputType.multiline,
+          label: l10n.note,
+          icon: Icons.note,
+        ),
+        ValBuilder(
+          listenable: _tags,
+          builder: (vals) {
+            return TagEditor(
+              tags: _tags.value,
+              onChanged: (p0) => setState(() {
+                _tags.value = p0;
+              }),
+              allTags: [...Pros.snippet.tags.value],
+              onRenameTag: (old, n) => setState(() {
+                Pros.snippet.renameTag(old, n);
+              }),
+            );
+          },
         ),
         Input(
           controller: _scriptController,
@@ -100,18 +144,96 @@ class _SnippetEditPageState extends State<SnippetEditPage>
           minLines: 3,
           maxLines: 10,
           type: TextInputType.multiline,
-          label: _s.snippet,
+          label: l10n.snippet,
           icon: Icons.code,
         ),
+        _buildAutoRunOn(),
+        _buildTip(),
       ],
+    );
+  }
+
+  Widget _buildAutoRunOn() {
+    return CardX(
+      child: ValBuilder(
+        listenable: _autoRunOn,
+        builder: (vals) {
+          final subtitle = vals.isEmpty
+              ? null
+              : vals
+                  .map((e) => Pros.server.pick(id: e)?.spi.name ?? e)
+                  .join(', ');
+          return ListTile(
+            leading: const Icon(Icons.settings_remote, size: 19),
+            title: Text(l10n.autoRun),
+            trailing: const Icon(Icons.keyboard_arrow_right),
+            subtitle: subtitle == null
+                ? null
+                : Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+            onTap: () async {
+              vals.removeWhere((e) => !Pros.server.serverOrder.contains(e));
+              final serverIds = await context.showPickDialog(
+                title: l10n.autoRun,
+                items: Pros.server.serverOrder,
+                name: (e) => Pros.server.pick(id: e)?.spi.name ?? e,
+                initial: vals,
+                clearable: true,
+              );
+              if (serverIds != null) {
+                _autoRunOn.value = serverIds;
+              }
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTip() {
+    return CardX(
+      child: Padding(
+        padding: const EdgeInsets.all(13),
+        child: SimpleMarkdown(
+          data: '''
+📌 ${l10n.supportFmtArgs}\n
+${Snippet.fmtArgs.keys.map((e) => '`$e`').join(', ')}\n
+
+${Snippet.fmtTermKeys.keys.map((e) => '`$e+?}`').join(', ')}\n
+${l10n.forExample}: 
+- `\${ctrl+c}` (Control + C)
+- `\${ctrl+b}d` (Tmux Detach)
+''',
+          styleSheet: MarkdownStyleSheet(
+            codeblockDecoration: const BoxDecoration(
+              color: Colors.transparent,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
   @override
   void afterFirstLayout(BuildContext context) {
-    if (widget.snippet != null) {
-      _nameController.text = widget.snippet!.name;
-      _scriptController.text = widget.snippet!.script;
+    final snippet = widget.snippet;
+    if (snippet != null) {
+      _nameController.text = snippet.name;
+      _scriptController.text = snippet.script;
+      if (snippet.note != null) {
+        _noteController.text = snippet.note!;
+      }
+
+      if (snippet.tags != null) {
+        _tags.value = snippet.tags!;
+      }
+
+      if (snippet.autoRunOn != null) {
+        _autoRunOn.value = snippet.autoRunOn!;
+      }
     }
   }
 }

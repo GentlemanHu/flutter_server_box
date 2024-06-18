@@ -1,9 +1,13 @@
-import 'package:toolbox/core/persistant_store.dart';
-import 'package:toolbox/data/model/server/server_private_info.dart';
+import 'package:fl_lib/fl_lib.dart';
+
+import '../model/server/server_private_info.dart';
 
 class ServerStore extends PersistentStore {
+  ServerStore() : super('server');
+
   void put(ServerPrivateInfo info) {
     box.put(info.id, info);
+    box.updateLastModified();
   }
 
   List<ServerPrivateInfo> fetch() {
@@ -11,7 +15,7 @@ class ServerStore extends PersistentStore {
     final List<ServerPrivateInfo> ss = [];
     for (final id in ids) {
       final s = box.get(id);
-      if (s != null) {
+      if (s != null && s is ServerPrivateInfo) {
         ss.add(s);
       }
     }
@@ -20,11 +24,17 @@ class ServerStore extends PersistentStore {
 
   void delete(String id) {
     box.delete(id);
+    box.updateLastModified();
+  }
+
+  void deleteAll() {
+    box.clear();
+    box.updateLastModified();
   }
 
   void update(ServerPrivateInfo old, ServerPrivateInfo newInfo) {
     if (!have(old)) {
-      throw Exception('Old ServerPrivateInfo not found');
+      throw Exception('Old spi: $old not found');
     }
     delete(old.id);
     put(newInfo);

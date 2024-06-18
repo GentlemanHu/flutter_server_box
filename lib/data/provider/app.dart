@@ -1,18 +1,37 @@
-import 'package:toolbox/core/provider_base.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:fl_lib/fl_lib.dart';
+import 'package:flutter/material.dart';
 
-class AppProvider extends BusyProvider {
+class AppProvider extends ChangeNotifier {
   int? _newestBuild;
   int? get newestBuild => _newestBuild;
-
-  bool _moveBg = true;
-  bool get moveBg => _moveBg;
-
-  void setNewestBuild(int build) {
+  set newestBuild(int? build) {
     _newestBuild = build;
     notifyListeners();
   }
 
-  void setCanMoveBg(bool moveBg) {
-    _moveBg = moveBg;
+  BuildContext? ctx;
+
+  bool isWearOS = false;
+
+  Future<void> init() async {
+    await _initIsWearOS();
+  }
+
+  Future<void> _initIsWearOS() async {
+    if (!isAndroid) {
+      isWearOS = false;
+      return;
+    }
+
+    final deviceInfo = DeviceInfoPlugin();
+    final androidInfo = await deviceInfo.androidInfo;
+
+    const feat = 'android.hardware.type.watch';
+    final hasFeat = androidInfo.systemFeatures.contains(feat);
+    if (hasFeat) {
+      isWearOS = true;
+      return;
+    }
   }
 }
